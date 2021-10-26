@@ -4,8 +4,10 @@ import argparse
 import socket
 
 MSG_SIZE = 1000
+ACK_SIZE = 3
+
 try:
-    parser = argparse.ArgumentParser(description="A prattle client")
+    parser = argparse.ArgumentParser(description="An RCMP File sender")
 
     parser.add_argument("-i", "--ip_address", dest="ip_address", default="localhost",
                         help="server hostname or IP address (default: 127.0.0.1)")
@@ -26,8 +28,7 @@ try:
         return s.getsockname()[0]
 
     try:
-        if args.verbose:
-            print("Opening socket on port %d" % args.port)
+        print("Opening socket on port %d" % args.port)
         file_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
     except Exception as e:
@@ -35,13 +36,22 @@ try:
         exit(1)
 
     try:
-        with open(args.filename, "r") as f:
+        with open(args.filename, "rb") as f:
             data = f.read(MSG_SIZE)
-            file_socket.sendto( data.encode("utf-8"), (args.ip_address,args.port) )
-
+            while len(data)==MSG_SIZE:
+                if args.verbose:
+                    print("DEBUG: Bytes read from file: %d" % len(data))
+                file_socket.sendto( data, (args.ip_address,args.port) )
+                msg, rcAddr = file_socket.recvfrom(ACK_SIZE)
+                if msg.decode() == "ACK":
+                    if args.verbose:
+                        print("ACK received.")
+                    data = f.read(MSG_SIZE)
+            if args.verbose:
+                print("DEBUG: Bytes read from file: %d" % len(data))
+            file_socket.sendto( data, (args.ip_address,args.port) )
+        file_socket.close()
     except FileNotFoundError:
         print("Error: File does not exist.")
-    except Exception as e:
-        pass
-except KeyboardInterrupt as e:
+except KeyboardInterrupt:
     print("aught KeyboardInterrupt")

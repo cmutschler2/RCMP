@@ -1,14 +1,12 @@
 # Receive the file
 
 import argparse
-from ctypes import sizeof
 import socket
-import traceback
 from pathlib import Path
 
 MSG_SIZE = 1000
 try:
-    parser = argparse.ArgumentParser(description="A prattle client")
+    parser = argparse.ArgumentParser(description="An RCMP File recipient")
 
     parser.add_argument("-p", "--port", dest="port", type=int, default=12345,
                         help="TCP port the server is listening on (default 12345)")
@@ -27,33 +25,34 @@ try:
         return s.getsockname()[0]
 
     try:
-        if args.verbose:
-            print("Opening socket on port %d" % args.port)
         file_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         ip_address = getNetworkIp()
-        if args.verbose:
-            print("DEBUG: Socket begining at %s on port" % ip_address, args.port)
+        print("Socket opening at %s on port" % ip_address, args.port)
         addr = ( ip_address, args.port)
 
         file_socket.bind(addr)
 
     except Exception as e:
         print("Error: %s" % e)
-        exit(1)
+        exit(-1)
 
     if Path(args.filename).is_file():
         usr_input = input("File aready exists. Overwrite? (y/N): ")
         if usr_input!='y' and usr_input!='Y':
             exit(-1)
 
-    f = open(args.filename, "w")
-    while True:
-        msg, clAddr = file_socket.recvfrom(MSG_SIZE)
-        if args.verbose:
-            print("Datagram received: %s" % msg.decode("utf-8"))
-        f.write(msg.decode("utf-8"))
-        # if msg < 1000:
-        #     break
+    with open(args.filename, "wb") as f:
+        while True:
+            msg, sdAddr = file_socket.recvfrom(MSG_SIZE)
+            if args.verbose:
+                print("Datagram received of size %d" % len(msg))
+            f.write(msg)
+            file_socket.sendto( bytes("ACK".encode("utf-8")), sdAddr)
+            if args.verbose:
+                print("ACK")
+            if len(msg) < 1000:
+                break
+    file_socket.close()
 except KeyboardInterrupt as e:
     print("aught KeyboardInterrupt")
