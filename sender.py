@@ -1,1 +1,47 @@
 # Send file
+
+import argparse
+import socket
+
+MSG_SIZE = 1000
+try:
+    parser = argparse.ArgumentParser(description="A prattle client")
+
+    parser.add_argument("-i", "--ip_address", dest="ip_address", default="localhost",
+                        help="server hostname or IP address (default: 127.0.0.1)")
+    parser.add_argument("-p", "--port", dest="port", type=int, default=12345,
+                        help="TCP port the server is listening on (default 12345)")
+    parser.add_argument("-f", "--file", dest="filename", default=None,
+                        help="source file name to transmit (default=None)")
+    parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
+                        help="turn verbose output on")
+    args = parser.parse_args()
+
+    def getNetworkIp():
+        '''This is just a way to get the IP address of interface this program is
+        communicating over.'''
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        s.connect(('8.8.8.8', 80))
+        return s.getsockname()[0]
+
+    try:
+        if args.verbose:
+            print("Opening socket on port %d" % args.port)
+        file_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        
+    except Exception as e:
+        print("Error occured during connection process: %s" % e)
+        exit(1)
+
+    try:
+        with open(args.filename, "r") as f:
+            data = f.read(MSG_SIZE)
+            file_socket.sendto( data.encode("utf-8"), (args.ip_address,args.port) )
+
+    except FileNotFoundError:
+        print("Error: File does not exist.")
+    except Exception as e:
+        pass
+except KeyboardInterrupt as e:
+    print("aught KeyboardInterrupt")
