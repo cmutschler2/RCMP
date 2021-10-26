@@ -1,9 +1,7 @@
 # Receive the file
 
 import argparse
-from ctypes import sizeof
 import socket
-import traceback
 from pathlib import Path
 
 MSG_SIZE = 1000
