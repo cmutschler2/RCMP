@@ -27,20 +27,17 @@ try:
         return s.getsockname()[0]
 
     try:
-        if args.verbose:
-            print("Opening socket on port %d" % args.port)
         file_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         ip_address = getNetworkIp()
-        if args.verbose:
-            print("DEBUG: Socket begining at %s on port" % ip_address, args.port)
+        print("DEBUG: Socket begining at %s on port" % ip_address, args.port)
         addr = ( ip_address, args.port)
 
         file_socket.bind(addr)
 
     except Exception as e:
         print("Error: %s" % e)
-        exit(1)
+        exit(-1)
 
     if Path(args.filename).is_file():
         usr_input = input("File aready exists. Overwrite? (y/N): ")

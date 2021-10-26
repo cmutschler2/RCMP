@@ -26,8 +26,7 @@ try:
         return s.getsockname()[0]
 
     try:
-        if args.verbose:
-            print("Opening socket on port %d" % args.port)
+        print("Opening socket on port %d" % args.port)
         file_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
     except Exception as e:
