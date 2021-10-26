@@ -30,7 +30,7 @@ try:
         file_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         ip_address = getNetworkIp()
-        print("DEBUG: Socket begining at %s on port" % ip_address, args.port)
+        print("Socket opening at %s on port" % ip_address, args.port)
         addr = ( ip_address, args.port)
 
         file_socket.bind(addr)
