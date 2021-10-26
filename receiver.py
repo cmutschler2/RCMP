@@ -8,7 +8,7 @@ from pathlib import Path
 
 MSG_SIZE = 1000
 try:
-    parser = argparse.ArgumentParser(description="A prattle client")
+    parser = argparse.ArgumentParser(description="An RCMP File recipient")
 
     parser.add_argument("-p", "--port", dest="port", type=int, default=12345,
                         help="TCP port the server is listening on (default 12345)")
@@ -48,9 +48,9 @@ try:
     while True:
         msg, clAddr = file_socket.recvfrom(MSG_SIZE)
         if args.verbose:
-            print("Datagram received: %s" % msg.decode("utf-8"))
+            print("Datagram received of size %d" % len(msg))
         f.write(msg.decode("utf-8"))
-        # if msg < 1000:
-        #     break
+        if len(msg) < 1000:
+            break
 except KeyboardInterrupt as e:
     print("aught KeyboardInterrupt")

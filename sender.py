@@ -4,8 +4,9 @@ import argparse
 import socket
 
 MSG_SIZE = 1000
+
 try:
-    parser = argparse.ArgumentParser(description="A prattle client")
+    parser = argparse.ArgumentParser(description="An RCMP File sender")
 
     parser.add_argument("-i", "--ip_address", dest="ip_address", default="localhost",
                         help="server hostname or IP address (default: 127.0.0.1)")
@@ -35,8 +36,14 @@ try:
 
     try:
         with open(args.filename, "r") as f:
-            data = f.read(MSG_SIZE)
-            file_socket.sendto( data.encode("utf-8"), (args.ip_address,args.port) )
+            loop = True
+            while loop:
+                data = f.read(MSG_SIZE)
+                if args.verbose:
+                    print("DEBUG: Bytes read from file: %d" % len(data))
+                if data == "":
+                    loop = False
+                file_socket.sendto( data.encode("utf-8"), (args.ip_address,args.port) )
 
     except FileNotFoundError:
         print("Error: File does not exist.")
