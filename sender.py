@@ -2,8 +2,6 @@
 
 import argparse
 import socket
-import mimetypes
-import sys
 
 MSG_SIZE = 1000
 ACK_SIZE = 3
