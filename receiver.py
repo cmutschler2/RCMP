@@ -42,13 +42,17 @@ try:
         if usr_input!='y' and usr_input!='Y':
             exit(-1)
 
-    f = open(args.filename, "w")
-    while True:
-        msg, clAddr = file_socket.recvfrom(MSG_SIZE)
-        if args.verbose:
-            print("Datagram received of size %d" % len(msg))
-        f.write(msg.decode("utf-8"))
-        if len(msg) < 1000:
-            break
+    with open(args.filename, "wb") as f:
+        while True:
+            msg, sdAddr = file_socket.recvfrom(MSG_SIZE)
+            if args.verbose:
+                print("Datagram received of size %d" % len(msg))
+            f.write(msg)
+            file_socket.sendto( bytes("ACK".encode("utf-8")), sdAddr)
+            if args.verbose:
+                print("ACK")
+            if len(msg) < 1000:
+                break
+    file_socket.close()
 except KeyboardInterrupt as e:
     print("aught KeyboardInterrupt")
