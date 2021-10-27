@@ -5,6 +5,8 @@ import socket
 from pathlib import Path
 
 MSG_SIZE = 1000
+HEADER_SIZE = 12
+DEBUG = True
 try:
     parser = argparse.ArgumentParser(description="An RCMP File recipient")
 
@@ -45,9 +47,18 @@ try:
 
     with open(args.filename, "wb") as f:
         while True:
-            msg, sdAddr = file_socket.recvfrom(MSG_SIZE)
+            msg, sdAddr = file_socket.recvfrom(MSG_SIZE + HEADER_SIZE)
             if args.verbose:
                 print("Datagram received of size %d" % len(msg))
+            if DEBUG:
+                print('*'*30+"New Message" + '*'*30)
+                print('total_bytes (bytes)', end=''); print(msg, end=''); print('\t|\t' + 'should be 1012 bytes total');
+                print('*'*30+"Broken up Message" + '*'*30)
+                print('commId    (bytes) ', end=''); print(msg[0:4] , end=''); print('\t|\t' + 'should be 0:3 - same every time')
+                print('fileBytes (bytes) ', end=''); print(msg[4:8] , end=''); print('\t|\t' + 'should be 4:7 - same every time')
+                print('packetNum (bytes) ', end=''); print(msg[8:12], end=''); print('\t|\t' + 'should be 8:11 - incr every time')
+                print('data      (bytes) ', end=''); print(msg[12:] , end=''); print('\t|\t' + 'should be 50 bytes from start of file')
+
             datagram = msg[12:] # Skip header for now
             f.write(msg)
             file_socket.sendto( bytes("ACK".encode("utf-8")), sdAddr)
