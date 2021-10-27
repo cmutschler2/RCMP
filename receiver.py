@@ -60,7 +60,7 @@ try:
                 print('data      (bytes) ', end=''); print(msg[12:] , end=''); print('\t|\t' + 'should be 50 bytes from start of file')
 
             datagram = msg[12:] # Skip header for now
-            f.write(msg)
+            f.write(datagram)
             file_socket.sendto( bytes("ACK".encode("utf-8")), sdAddr)
             if args.verbose:
                 print("ACK")
