@@ -6,7 +6,7 @@ from pathlib import Path
 
 MSG_SIZE = 1000
 HEADER_SIZE = 12
-DEBUG = True
+DEBUG = False
 try:
     parser = argparse.ArgumentParser(description="An RCMP File recipient")
 
@@ -14,7 +14,6 @@ try:
                         help="UDP port the server is listening on (default 12345)")
     parser.add_argument("-f", "--file", dest="filename", default="",
                         help="destination file name for incoming transmission (default='')")
-                        #Should this have a default -- doesn't quite make sense & it exits fine w/o
     parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
                         help="turn verbose output on")
     args = parser.parse_args()

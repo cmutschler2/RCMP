@@ -8,7 +8,7 @@ import os
 MSG_SIZE = 1000
 ACK_SIZE = 3
 HEADER_SIZE = 12
-DEBUG = True;
+DEBUG = False;
 
 try:
     parser = argparse.ArgumentParser(description="An RCMP File sender")
@@ -16,8 +16,6 @@ try:
     parser.add_argument("-i", "--ip_address", dest="ip_address", default="localhost",
                         help="receiver hostname or IP address (default: 127.0.0.1)")
     # Sender can break sending w/ default over localhost
-    # or when receiver isn't started up? - should it wait or exit immediately?
-    # actually the second problem will probably be solved by timeouts
     parser.add_argument("-p", "--port", dest="port", type=int, default=12345,
                         help="UDP port the server is listening on (default 12345)")
     parser.add_argument("-f", "--file", dest="filename", default=None,
