@@ -9,9 +9,10 @@ try:
     parser = argparse.ArgumentParser(description="An RCMP File recipient")
 
     parser.add_argument("-p", "--port", dest="port", type=int, default=12345,
-                        help="TCP port the server is listening on (default 12345)")
+                        help="UDP port the server is listening on (default 12345)")
     parser.add_argument("-f", "--file", dest="filename", default="",
                         help="destination file name for incoming transmission (default='')")
+                        #Should this have a default -- doesn't quite make sense & it exits fine w/o
     parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
                         help="turn verbose output on")
     args = parser.parse_args()
@@ -29,7 +30,7 @@ try:
 
         ip_address = getNetworkIp()
         print("Socket opening at %s on port" % ip_address, args.port)
-        addr = ( ip_address, args.port)
+        addr = ( ip_address, args.port )
 
         file_socket.bind(addr)
 
@@ -47,6 +48,7 @@ try:
             msg, sdAddr = file_socket.recvfrom(MSG_SIZE)
             if args.verbose:
                 print("Datagram received of size %d" % len(msg))
+            datagram = msg[12:] # Skip header for now
             f.write(msg)
             file_socket.sendto( bytes("ACK".encode("utf-8")), sdAddr)
             if args.verbose:
@@ -55,4 +57,5 @@ try:
                 break
     file_socket.close()
 except KeyboardInterrupt as e:
-    print("aught KeyboardInterrupt")
+    print("caught KeyboardInterrupt")
+
