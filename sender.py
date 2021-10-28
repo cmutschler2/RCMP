@@ -77,7 +77,6 @@ try:
 
                 if packetNum == nextAckPkt:
                     datagram = getByteArray(data, communicationId, fileSize, packetNum, ACK_PKT)
-                    nextAckPkt+=ackGap
                 else:
                     datagram = getByteArray(data, communicationId, fileSize, packetNum, NO_ACK_PKT)
 
@@ -91,14 +90,17 @@ try:
                     print("\tpayload: ", datagram[13:])
 
                 file_socket.sendto( datagram, (args.ip_address,args.port) )
-                packetNum+=1 # increment packetNum
 
-                ackMsg, rcAddr = file_socket.recvfrom(ACK_SIZE)
-                print("*"*36 + "Recv Ack" + '*'*36)
-                print("TotalPkt", ackMsg)
-                print("\tcommId: ", ackMsg[0:4])
-                print("\tpacketNum: ", ackMsg[4:8], " (as Int: %d)" % int.from_bytes(ackMsg[4:8], "big") )
+                if packetNum == nextAckPkt:
+                    ackMsg, rcAddr = file_socket.recvfrom(ACK_SIZE)
+                    print("*"*36 + "Recv Ack" + '*'*36)
+                    print("TotalPkt", ackMsg)
+                    print("\tcommId: ", ackMsg[0:4])
+                    print("\tpacketNum: ", ackMsg[4:8], " (as Int: %d)" % int.from_bytes(ackMsg[4:8], "big") )
+                    nextAckPkt+=ackGap
+                    ackGap+=1
 
+                packetNum+=1
                 data = f.read(MSG_SIZE)
             if args.verbose:
                 print("*"*36 + "Sent Msg" + '*'*36)
