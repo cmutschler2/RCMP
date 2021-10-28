@@ -7,7 +7,9 @@ import os
 
 MSG_SIZE = 1000
 ACK_SIZE = 8
-HEADER_SIZE = 12
+HEADER_SIZE = 13
+ACK_PKT = 1
+NO_ACK_PKT = 0
 DEBUG = False;
 
 try:
@@ -28,6 +30,8 @@ try:
     communicationId = randbytes(4); # Hopefully four random bytes ~ unique id
     packetNum = 0;
     fileSize = 0;
+    nextAckPkt = 0;
+    ackGap = 1;
 
     def getNetworkIp(): # is this fn necessary (in this file)?
         '''This is just a way to get the IP address of interface this program is
@@ -37,16 +41,17 @@ try:
         s.connect(('8.8.8.8', 80))
         return s.getsockname()[0]
 
-    def getByteArray(data, commId, fileBytes, packetNum): 
+    def getByteArray(data, commId, fileBytes, packetNum, ackPkt): 
         ''' Way to abstract the task of creating Header + data message to send 
         over socket '''
-        empty_bytes = bytes(''.encode('utf-8'));
-        # apparently needs an empty bytes object to concat with otherwise join does nothing
-        fileBytes_bytes = fileBytes.to_bytes(4, byteorder='big')
-        packetNum_bytes = packetNum.to_bytes(4, byteorder='big')
-        total_byte = commId.join([empty_bytes, fileBytes_bytes]) # needs to be iterable
-        total_byte = total_byte.join([empty_bytes, packetNum_bytes])
-        total_byte = total_byte.join([empty_bytes, data])
+        fileBytes_bytes = fileBytes.to_bytes(4, 'big')
+        packetNum_bytes = packetNum.to_bytes(4, 'big')
+        ackPkt_bytes = ackPkt.to_bytes(1, 'big')
+        # join() needs arg as iterable with > 1 elem (use empty bytes, b'')
+        total_byte = commId.join([b'', fileBytes_bytes]) 
+        total_byte = total_byte.join([b'', packetNum_bytes])
+        total_byte = total_byte.join([b'', ackPkt_bytes])
+        total_byte = total_byte.join([b'', data])
         return total_byte
 
     try:
@@ -70,14 +75,20 @@ try:
                     print("*"*36 + "Sent Msg" + '*'*36)
                     print("DEBUG: Bytes read from file: %d" % len(data))
 
-                datagram = getByteArray(data, communicationId, fileSize, packetNum)
+                if packetNum == nextAckPkt:
+                    datagram = getByteArray(data, communicationId, fileSize, packetNum, ACK_PKT)
+                    nextAckPkt+=ackGap
+                else:
+                    datagram = getByteArray(data, communicationId, fileSize, packetNum, NO_ACK_PKT)
+
                 if args.verbose: 
                     print("DEBUG: Bytes of message sent: %d" % len(datagram))
                     print("TotalPkt: ", datagram)
                     print("\tcommId: ", datagram[0:4])
                     print("\tfileBytes: ", datagram[4:8], " (as Int: %d)" % fileSize)
                     print("\tpacketNum: ", datagram[8:12], " (as Int: %d)" % packetNum)
-                    print("\tpayload: ", datagram[12:])
+                    print("\tackPkt?: ", datagram[12:13])
+                    print("\tpayload: ", datagram[13:])
 
                 file_socket.sendto( datagram, (args.ip_address,args.port) )
                 packetNum+=1 # increment packetNum
@@ -92,15 +103,15 @@ try:
             if args.verbose:
                 print("*"*36 + "Sent Msg" + '*'*36)
                 print("DEBUG: Bytes read from file: %d" % len(data))
-            datagram = getByteArray(data, communicationId, fileSize, packetNum)
+            datagram = getByteArray(data, communicationId, fileSize, packetNum, ACK_PKT)
             if args.verbose: 
                 print("DEBUG: Bytes of message sent: %d" % len(datagram))
                 print("TotalPkt: ", datagram)
                 print("\tcommId: ", datagram[0:4])
                 print("\tfileBytes: ", datagram[4:8], " (as Int: %d)" % fileSize)
                 print("\tpacketNum: ", datagram[8:12], " (as Int: %d)" % packetNum)
-                print("\tpayload: ", datagram[12:])
-
+                print("\tackPkt?: ", datagram[12:13])
+                print("\tpayload: ", datagram[13:])
 
             file_socket.sendto( datagram, (args.ip_address,args.port) )
         file_socket.close()
