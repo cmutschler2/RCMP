@@ -6,7 +6,7 @@ from pathlib import Path
 
 MSG_SIZE = 1000
 HEADER_SIZE = 12
-DEBUG = False
+ACK_SIZE = 8
 try:
     parser = argparse.ArgumentParser(description="An RCMP File recipient")
 
@@ -17,6 +17,9 @@ try:
     parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
                         help="turn verbose output on")
     args = parser.parse_args()
+
+    # Header Values
+    recvPacketNum = 0;
 
     def getNetworkIp():
         '''This is just a way to get the IP address of interface this program is
@@ -47,23 +50,35 @@ try:
     with open(args.filename, "wb") as f:
         while True:
             msg, sdAddr = file_socket.recvfrom(MSG_SIZE + HEADER_SIZE)
+
             if args.verbose:
+                print("*"*36 + "Recv Msg" + '*'*36)
                 print("Datagram received of size %d" % len(msg))
-            if DEBUG:
-                print('*'*30+"New Message" + '*'*30)
-                print('total_bytes (bytes)', end=''); print(msg, end=''); print('\t|\t' + 'should be 1012 bytes total');
-                print('*'*30+"Broken up Message" + '*'*30)
-                print('commId    (bytes) ', end=''); print(msg[0:4] , end=''); print('\t|\t' + 'should be 0:3 - same every time')
-                print('fileBytes (bytes) ', end=''); print(msg[4:8] , end=''); print('\t|\t' + 'should be 4:7 - same every time')
-                print('packetNum (bytes) ', end=''); print(msg[8:12], end=''); print('\t|\t' + 'should be 8:11 - incr every time')
-                print('data      (bytes) ', end=''); print(msg[12:] , end=''); print('\t|\t' + 'should be 50 bytes from start of file')
+                print("TotalPkt: ", msg)
+                print("\tcommId: ", msg[0:4])
+                print("\tfileBytes: ", msg[4:8], " (as Int: %d)" % int.from_bytes(msg[4:8], "big") )
+                print("\tpacketNum: ", msg[8:12], " (as Int: %d)" % int.from_bytes(msg[8:12], "big") )
+                print("\tpayload: ", msg[12:])
 
             datagram = msg[12:] # Skip header for now
             f.write(datagram)
-            file_socket.sendto( bytes("ACK".encode("utf-8")), sdAddr)
+
+            recvPkt_bytes = recvPacketNum.to_bytes(4, byteorder = 'big')
+            if(msg[8:12] == recvPkt_bytes):
+                recvPacketNum+=1 # incr by one for now
+            empty_bytes = bytes(''.encode('utf-8'));
+            # apparently needs an empty bytes object to concat with otherwise join does nothing
+            ackMsg = msg[0:4].join([empty_bytes, recvPkt_bytes]) # msg[0:4] is the commId (do we check if this is equal)
+
+            file_socket.sendto( ackMsg, sdAddr)
+
             if args.verbose:
-                print("ACK")
-            if len(msg) < 1000:
+                print("*"*36 + "Sent Ack" + '*'*36)
+                print("TotalPkt", ackMsg)
+                print("\tcommId: ", ackMsg[0:4])
+                print("\tpacketNum: ", ackMsg[4:8], " (as Int: %d)" % int.from_bytes(ackMsg[4:8], "big") )
+
+            if len(msg) < (MSG_SIZE+HEADER_SIZE): # What happens if we have exact mult?
                 break
     file_socket.close()
 except KeyboardInterrupt as e:
