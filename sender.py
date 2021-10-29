@@ -93,10 +93,11 @@ try:
 
                 if packetNum == nextAckPkt:
                     ackMsg, rcAddr = file_socket.recvfrom(ACK_SIZE)
-                    print("*"*36 + "Recv Ack" + '*'*36)
-                    print("TotalPkt", ackMsg)
-                    print("\tcommId: ", ackMsg[0:4])
-                    print("\tpacketNum: ", ackMsg[4:8], " (as Int: %d)" % int.from_bytes(ackMsg[4:8], "big") )
+                    if args.verbose:
+                        print("*"*36 + "Recv Ack" + '*'*36)
+                        print("TotalPkt", ackMsg)
+                        print("\tcommId: ", ackMsg[0:4])
+                        print("\tpacketNum: ", ackMsg[4:8], " (as Int: %d)" % int.from_bytes(ackMsg[4:8], "big") )
                     nextAckPkt+=ackGap
                     ackGap+=1
 
