@@ -1,8 +1,13 @@
-# Send file
-
+################################################################################
+# Course: cs 332
+# Project: RCMP
+# File: Sender.py
+# Names: Christian Mutschler, Kris Miedema
+# Date: 10/31/21
+################################################################################
 import argparse
 import socket
-from random import randbytes # is random ~= to unique?
+from random import randint 
 import os
 
 MSG_SIZE = 1000
@@ -10,7 +15,6 @@ ACK_SIZE = 8
 HEADER_SIZE = 13
 ACK_PKT = 1
 NO_ACK_PKT = 0
-DEBUG = False;
 
 try:
     parser = argparse.ArgumentParser(description="An RCMP File sender")
@@ -20,14 +24,14 @@ try:
     # Sender can break sending w/ default over localhost
     parser.add_argument("-p", "--port", dest="port", type=int, default=12345,
                         help="UDP port the server is listening on (default 12345)")
-    parser.add_argument("-f", "--file", dest="filename", default=None,
-                        help="source file name to transmit (default=None)")
+    parser.add_argument("-f", "--file", dest="filename", default="",
+                        help="source file name to transmit (default="")")
     parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
                         help="turn verbose output on")
     args = parser.parse_args()
 
     # Header values 
-    communicationId = randbytes(4); # Hopefully four random bytes ~ unique id
+    communicationId = randint(0, 2**32-1).to_bytes(4, 'big'); # four random bytes ~ unique id, randbytes isn't available on lab machine
     packetNum = 0;
     fileSize = 0;
     nextAckPkt = 0;
