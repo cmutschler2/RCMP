@@ -57,6 +57,7 @@ try:
     try:
         print("Opening socket on port %d" % args.port)
         file_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        file_socket.settimeout(1) # set timeout to 1000 ms = 1 s
         
     except Exception as e:
         print("Error occured during connection process: %s" % e)
@@ -68,6 +69,8 @@ try:
             f.seek(0, os.SEEK_END)
             fileSize = f.tell() # get full size of file
             f.seek(0, 0) # reset to end
+            lastFilePos = f.tell();
+            lastAckNum = 0
 
             data = f.read(MSG_SIZE) 
             while len(data)==MSG_SIZE: 
@@ -92,14 +95,21 @@ try:
                 file_socket.sendto( datagram, (args.ip_address,args.port) )
 
                 if packetNum == nextAckPkt:
-                    ackMsg, rcAddr = file_socket.recvfrom(ACK_SIZE)
-                    if args.verbose:
-                        print("*"*36 + "Recv Ack" + '*'*36)
-                        print("TotalPkt", ackMsg)
-                        print("\tcommId: ", ackMsg[0:4])
-                        print("\tpacketNum: ", ackMsg[4:8], " (as Int: %d)" % int.from_bytes(ackMsg[4:8], "big") )
-                    nextAckPkt+=ackGap
-                    ackGap+=1
+                    try:
+                        ackMsg, rcAddr = file_socket.recvfrom(ACK_SIZE)
+                        if args.verbose:
+                            print("*"*36 + "Recv Ack" + '*'*36)
+                            print("TotalPkt", ackMsg)
+                            print("\tcommId: ", ackMsg[0:4])
+                            print("\tpacketNum: ", ackMsg[4:8], " (as Int: %d)" % int.from_bytes(ackMsg[4:8], "big") )
+                        lastAckNum = packetNum
+                        nextAckPkt+=ackGap
+                        ackGap+=1
+                    except socket.timeout: 
+                        ackGap = 0
+                        f.seek(lastFilePos, 0); # find offset 0 from last position
+                        packetNum = lastAckNum
+                        print("Socket Timed Out");
 
                 packetNum+=1
                 data = f.read(MSG_SIZE)
