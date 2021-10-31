@@ -36,6 +36,7 @@ try:
     fileSize = 0;
     nextAckPkt = 0;
     ackGap = 1;
+    recvNotRespTimeout = 0;
 
     def getNetworkIp(): # is this fn necessary (in this file)?
         '''This is just a way to get the IP address of interface this program is
@@ -101,6 +102,7 @@ try:
                 if packetNum == nextAckPkt:
                     try:
                         ackMsg, rcAddr = file_socket.recvfrom(ACK_SIZE)
+                        recvNotRespTimeout = 0
                         if args.verbose:
                             print("*"*36 + "Recv Ack" + '*'*36)
                             #print("TotalPkt", ackMsg)
@@ -127,6 +129,10 @@ try:
                         f.seek(lastFilePos, 0); # find offset 0 from last position
                         packetNum = lastAckNum # hacked together way to assume will continue to incr packet
                         nextAckPkt = lastAckNum +1 
+                        recvNotRespTimeout+=1
+                        if(recvNotRespTimeout == 10):
+                            print("Receiver has stoped responding")
+                            exit(1) 
 
                 packetNum+=1
                 data = f.read(MSG_SIZE)
