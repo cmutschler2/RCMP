@@ -74,13 +74,13 @@ try:
             fileSize = f.tell() # get full size of file
             f.seek(0, 0) # reset to end
             lastFilePos = f.tell();
-            lastAckNum = 0
+            lastAckNum = -1
 
             data = f.read(MSG_SIZE) 
             while len(data)==MSG_SIZE: 
                 if args.verbose:
                     print("*"*36 + "Sent Msg" + '*'*36)
-                    print("DEBUG: Bytes read from file: %d" % len(data))
+                    #print("DEBUG: Bytes read from file: %d" % len(data))
 
                 if packetNum == nextAckPkt:
                     datagram = getByteArray(data, communicationId, fileSize, packetNum, ACK_PKT)
@@ -88,13 +88,13 @@ try:
                     datagram = getByteArray(data, communicationId, fileSize, packetNum, NO_ACK_PKT)
 
                 if args.verbose: 
-                    print("DEBUG: Bytes of message sent: %d" % len(datagram))
-                    print("TotalPkt: ", datagram)
-                    print("\tcommId: ", datagram[0:4])
-                    print("\tfileBytes: ", datagram[4:8], " (as Int: %d)" % fileSize)
+                    #print("DEBUG: Bytes of message sent: %d" % len(datagram))
+                    #print("TotalPkt: ", datagram)
+                    #print("\tcommId: ", datagram[0:4])
+                    #print("\tfileBytes: ", datagram[4:8], " (as Int: %d)" % fileSize)
                     print("\tpacketNum: ", datagram[8:12], " (as Int: %d)" % packetNum)
-                    print("\tackPkt?: ", datagram[12:13])
-                    print("\tpayload: ", datagram[13:])
+                    #print("\tackPkt?: ", datagram[12:13])
+                    #print("\tpayload: ", datagram[13:])
 
                 file_socket.sendto( datagram, (args.ip_address,args.port) )
 
@@ -103,34 +103,81 @@ try:
                         ackMsg, rcAddr = file_socket.recvfrom(ACK_SIZE)
                         if args.verbose:
                             print("*"*36 + "Recv Ack" + '*'*36)
-                            print("TotalPkt", ackMsg)
-                            print("\tcommId: ", ackMsg[0:4])
+                            #print("TotalPkt", ackMsg)
+                            #print("\tcommId: ", ackMsg[0:4])
                             print("\tpacketNum: ", ackMsg[4:8], " (as Int: %d)" % int.from_bytes(ackMsg[4:8], "big") )
-                        lastAckNum = packetNum
-                        nextAckPkt+=ackGap
-                        ackGap+=1
+                        if int.from_bytes(ackMsg[4:8], 'big') >= packetNum:
+                            lastAckNum = packetNum
+                            nextAckPkt+=ackGap
+                            ackGap+=1
+                            lastFilePos = f.tell()
+                        else: 
+                            if args.verbose:
+                                print("\tReceived out of order Ack")
+                            ackGap = 1
+                            f.seek(lastFilePos, 0); # find offset 0 from last position
+                            packetNum = lastAckNum # hacked together way to assume will continue to incr packet
+                            nextAckPkt = lastAckNum +1 
+
+
                     except socket.timeout: 
-                        ackGap = 0
+                        if args.verbose:
+                            print("\tSocket Timed Out");
+                        ackGap = 1
                         f.seek(lastFilePos, 0); # find offset 0 from last position
-                        packetNum = lastAckNum
-                        print("Socket Timed Out");
+                        packetNum = lastAckNum # hacked together way to assume will continue to incr packet
+                        nextAckPkt = lastAckNum +1 
 
                 packetNum+=1
                 data = f.read(MSG_SIZE)
-            if args.verbose:
-                print("*"*36 + "Sent Msg" + '*'*36)
-                print("DEBUG: Bytes read from file: %d" % len(data))
-            datagram = getByteArray(data, communicationId, fileSize, packetNum, ACK_PKT)
-            if args.verbose: 
-                print("DEBUG: Bytes of message sent: %d" % len(datagram))
-                print("TotalPkt: ", datagram)
-                print("\tcommId: ", datagram[0:4])
-                print("\tfileBytes: ", datagram[4:8], " (as Int: %d)" % fileSize)
-                print("\tpacketNum: ", datagram[8:12], " (as Int: %d)" % packetNum)
-                print("\tackPkt?: ", datagram[12:13])
-                print("\tpayload: ", datagram[13:])
+            finalPktNum = packetNum
+            timeoutCount = 0
+            while(timeoutCount < 5):
+                if args.verbose:
+                     print("*"*36 + "Sent Msg" + '*'*36)
+                #    print("DEBUG: Bytes read from file: %d" % len(data))
+                datagram = getByteArray(data, communicationId, fileSize, packetNum, ACK_PKT)
+                if args.verbose: 
+                #    print("DEBUG: Bytes of message sent: %d" % len(datagram))
+                #    print("TotalPkt: ", datagram)
+                #    print("\tcommId: ", datagram[0:4])
+                #    print("\tfileBytes: ", datagram[4:8], " (as Int: %d)" % fileSize)
+                     print("\tpacketNum: ", datagram[8:12], " (as Int: %d)" % packetNum)
+                #    print("\tackPkt?: ", datagram[12:13])
+                #    print("\tpayload: ", datagram[13:])
 
-            file_socket.sendto( datagram, (args.ip_address,args.port) )
+                file_socket.sendto( datagram, (args.ip_address,args.port) )
+                try:
+                    ackMsg, rcAddr = file_socket.recvfrom(ACK_SIZE)
+                    if args.verbose:
+                        print("*"*36 + "Recv Ack" + '*'*36)
+                        #print("TotalPkt", ackMsg)
+                        #print("\tcommId: ", ackMsg[0:4])
+                        print("\tpacketNum: ", ackMsg[4:8], " (as Int: %d)" % int.from_bytes(ackMsg[4:8], "big") )
+                    if int.from_bytes(ackMsg[4:8], 'big') >= packetNum:
+                        if int.from_bytes(ackMsg[4:8], 'big') == finalPktNum:
+                            break
+                        lastAckNum = packetNum
+                        nextAckPkt+=ackGap
+                        ackGap+=1
+                        lastFilePos = f.tell()
+                    else:
+                        ackGap = 1
+                        f.seek(lastFilePos, 0); # find offset 0 from last position
+                        packetNum = lastAckNum 
+                        nextAckPkt = lastAckNum +1 
+
+                except socket.timeout:
+                    if args.verbose:
+                        print("Timed out count %d" % timeoutCount);
+                    ackGap = 1
+                    f.seek(lastFilePos, 0); # find offset 0 from last position
+                    packetNum = lastAckNum # hacked together way to assume will continue to incr packet
+                    nextAckPkt = lastAckNum +1 
+                    timeoutCount += 1
+                    if timeoutCount == 5:
+                        print("File transfer success unkown")
+
         file_socket.close()
     except FileNotFoundError:
         print("Error: File does not exist.")
