@@ -1,11 +1,16 @@
-# Receive the file
-
+################################################################################
+# Course: cs 332
+# Project: RCMP
+# File: Receiver.py
+# Names: Christian Mutschler, Kris Miedema
+# Date: 10/31/21
+################################################################################
 import argparse
 import socket
 from pathlib import Path
 
 MSG_SIZE = 1000
-HEADER_SIZE = 12
+HEADER_SIZE = 13
 ACK_SIZE = 8
 try:
     parser = argparse.ArgumentParser(description="An RCMP File recipient")
@@ -19,7 +24,8 @@ try:
     args = parser.parse_args()
 
     # Header Values
-    recvPacketNum = 0;
+    expPktNum = 0
+    lastGoodPkt = -1
 
     def getNetworkIp():
         '''This is just a way to get the IP address of interface this program is
@@ -47,39 +53,41 @@ try:
         if usr_input!='y' and usr_input!='Y':
             exit(-1)
 
-    with open(args.filename, "wb") as f:
-        while True:
-            msg, sdAddr = file_socket.recvfrom(MSG_SIZE + HEADER_SIZE)
+    try:
+        with open(args.filename, "wb") as f:
+            while True:
+                msg, sdAddr = file_socket.recvfrom(MSG_SIZE + HEADER_SIZE)
 
-            if args.verbose:
-                print("*"*36 + "Recv Msg" + '*'*36)
-                print("Datagram received of size %d" % len(msg))
-                print("TotalPkt: ", msg)
-                print("\tcommId: ", msg[0:4])
-                print("\tfileBytes: ", msg[4:8], " (as Int: %d)" % int.from_bytes(msg[4:8], "big") )
-                print("\tpacketNum: ", msg[8:12], " (as Int: %d)" % int.from_bytes(msg[8:12], "big") )
-                print("\tpayload: ", msg[12:])
+                #if args.verbose:
+                    #print("*"*36 + "Recv Msg" + '*'*36)
+                    #print("Datagram received of size %d" % len(msg))
+                    #print("TotalPkt: ", msg)
+                    #print("\tcommId: ", msg[0:4])
+                    #print("\tfileBytes: ", msg[4:8], " (as Int: %d)" % int.from_bytes(msg[4:8], "big") )
+                    #print("\tpacketNum: ", msg[8:12], " (as Int: %d)" % int.from_bytes(msg[8:12], "big") )
+                    #print("\tackPkt?: ", msg[12:13])
+                    #print("\tpayload: ", msg[13:])
 
-            datagram = msg[12:] # Skip header for now
-            f.write(datagram)
+                if(int.from_bytes(msg[8:12], 'big') == expPktNum):
+                    fileData = msg[13:] # Skip header for now
+                    f.write(fileData) 
+                    lastGoodPkt = expPktNum
+                    expPktNum+=1
+                if msg[12] == 1:
+                    ackMsg = msg[0:4].join([b'', lastGoodPkt.to_bytes(4, 'big')]) # msg[0:4] is the commId (do we check if this is equal)
+                    file_socket.sendto( ackMsg, sdAddr)
 
-            recvPkt_bytes = recvPacketNum.to_bytes(4, byteorder = 'big')
-            if(msg[8:12] == recvPkt_bytes):
-                recvPacketNum+=1 # incr by one for now
-            empty_bytes = bytes(''.encode('utf-8'));
-            # apparently needs an empty bytes object to concat with otherwise join does nothing
-            ackMsg = msg[0:4].join([empty_bytes, recvPkt_bytes]) # msg[0:4] is the commId (do we check if this is equal)
+                if args.verbose:
+                    print("*"*36 + "Sent Ack" + '*'*36)
+                    print("TotalPkt", ackMsg)
+                    print("\tcommId: ", ackMsg[0:4])
+                    print("\tpacketNum: ", ackMsg[4:8], " (as Int: %d)" % int.from_bytes(ackMsg[4:8], "big") )
 
-            file_socket.sendto( ackMsg, sdAddr)
-
-            if args.verbose:
-                print("*"*36 + "Sent Ack" + '*'*36)
-                print("TotalPkt", ackMsg)
-                print("\tcommId: ", ackMsg[0:4])
-                print("\tpacketNum: ", ackMsg[4:8], " (as Int: %d)" % int.from_bytes(ackMsg[4:8], "big") )
-
-            if len(msg) < (MSG_SIZE+HEADER_SIZE): # What happens if we have exact mult?
-                break
+                if len(msg) < (MSG_SIZE+HEADER_SIZE): # What happens if we have exact mult?
+                    break
+    except FileNotFoundError:
+        print("Error: File does not exist.")
+   
     file_socket.close()
 except KeyboardInterrupt as e:
     print("caught KeyboardInterrupt")
